@@ -14,15 +14,14 @@ public static class Config
     public static IEnumerable<ApiScope> ApiScopes =>
         new ApiScope[]
         {
-            new ApiScope("weatherApiScope"),
+            new("weatherApiScope"),
         };
 
     public static IEnumerable<Client> Clients =>
         new Client[]
         {
             // m2m client credentials flow client
-            new Client
-            {
+            new() {
                 ClientId = "m2m.client",
                 ClientName = "Client Credentials Client",
 
@@ -33,8 +32,7 @@ public static class Config
             },
 
             // interactive client using code flow + pkce
-            new Client
-            {
+            new() {
                 ClientId = "interactive",
                 ClientSecrets = { new Secret("49C1A7E1-0C79-4A89-A3D6-A37998FB86B0".Sha256()) },
 
@@ -52,7 +50,7 @@ public static class Config
     public static IEnumerable<ApiResource> ApiResources =>
         new ApiResource[]
         {
-            new ApiResource("weatherApiResource")
+            new("weatherApiResource")
             {
                 Scopes = { "weatherApiScope" },
                 ApiSecrets = { new Secret("ScopeSecret".Sha256()) },
