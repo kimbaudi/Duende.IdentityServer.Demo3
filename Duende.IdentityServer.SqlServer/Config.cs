@@ -14,8 +14,7 @@ public static class Config
     public static IEnumerable<ApiScope> ApiScopes =>
         new ApiScope[]
         {
-            new ApiScope("scope1"),
-            new ApiScope("scope2"),
+            new ApiScope("weatherApiScope"),
         };
 
     public static IEnumerable<Client> Clients =>
@@ -30,7 +29,7 @@ public static class Config
                 AllowedGrantTypes = GrantTypes.ClientCredentials,
                 ClientSecrets = { new Secret("511536EF-F270-4058-80CA-1C89C192F69A".Sha256()) },
 
-                AllowedScopes = { "scope1" }
+                AllowedScopes = { "weatherApiScope" }
             },
 
             // interactive client using code flow + pkce
@@ -46,7 +45,17 @@ public static class Config
                 PostLogoutRedirectUris = { "https://localhost:44300/signout-callback-oidc" },
 
                 AllowOfflineAccess = true,
-                AllowedScopes = { "openid", "profile", "scope2" }
+                AllowedScopes = { IdentityServerConstants.StandardScopes.OpenId, IdentityServerConstants.StandardScopes.Profile, "weatherApiScope" }
             },
+        };
+
+    public static IEnumerable<ApiResource> ApiResources =>
+        new ApiResource[]
+        {
+            new ApiResource("weatherApiResource")
+            {
+                Scopes = { "weatherApiScope" },
+                ApiSecrets = { new Secret("ScopeSecret".Sha256()) },
+            }
         };
 }

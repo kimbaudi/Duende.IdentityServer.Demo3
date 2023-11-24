@@ -172,3 +172,276 @@ Get-Migration -Context PersistedGrantDbContext
 ```
 
 you can also delete `buildschema.bat` & `buildschema.sh` files
+
+now we need to seed the database.
+
+first, update `Config.cs` file to the following.
+we are basically creating an api scope called `weatherApiScope`, then setting that as the allowed scope in our clients.
+we are also creating an api resource called `weatherApiResource` and setting the scope as `weatherApiScope`.
+
+Config.cs
+
+```cs
+using Duende.IdentityServer.Models;
+
+namespace Duende.IdentityServer.SqlServer;
+
+public static class Config
+{
+    public static IEnumerable<IdentityResource> IdentityResources =>
+        new IdentityResource[]
+        {
+            new IdentityResources.OpenId(),
+            new IdentityResources.Profile(),
+        };
+
+    public static IEnumerable<ApiScope> ApiScopes =>
+        new ApiScope[]
+        {
+            new ApiScope("weatherApiScope"),
+        };
+
+    public static IEnumerable<Client> Clients =>
+        new Client[]
+        {
+            // m2m client credentials flow client
+            new Client
+            {
+                ClientId = "m2m.client",
+                ClientName = "Client Credentials Client",
+
+                AllowedGrantTypes = GrantTypes.ClientCredentials,
+                ClientSecrets = { new Secret("511536EF-F270-4058-80CA-1C89C192F69A".Sha256()) },
+
+                AllowedScopes = { "weatherApiScope" }
+            },
+
+            // interactive client using code flow + pkce
+            new Client
+            {
+                ClientId = "interactive",
+                ClientSecrets = { new Secret("49C1A7E1-0C79-4A89-A3D6-A37998FB86B0".Sha256()) },
+
+                AllowedGrantTypes = GrantTypes.Code,
+
+                RedirectUris = { "https://localhost:44300/signin-oidc" },
+                FrontChannelLogoutUri = "https://localhost:44300/signout-oidc",
+                PostLogoutRedirectUris = { "https://localhost:44300/signout-callback-oidc" },
+
+                AllowOfflineAccess = true,
+                AllowedScopes = { IdentityServerConstants.StandardScopes.OpenId, IdentityServerConstants.StandardScopes.Profile, "weatherApiScope" }
+            },
+        };
+
+    public static IEnumerable<ApiResource> ApiResources =>
+        new ApiResource[]
+        {
+            new ApiResource("weatherApiResource")
+            {
+                Scopes = { "weatherApiScope" },
+                ApiSecrets = { new Secret("ScopeSecret".Sha256()) },
+            }
+        };
+}
+```
+
+next, update `SeedData.cs` to the following so it seeds the config & users.
+
+SeedData.cs
+
+```cs
+using Duende.IdentityServer.EntityFramework.DbContexts;
+using Duende.IdentityServer.EntityFramework.Mappers;
+using Duende.IdentityServer.Models;
+using Duende.IdentityServer.SqlServer.Data;
+using Duende.IdentityServer.SqlServer.Models;
+using IdentityModel;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Serilog;
+using System.Security.Claims;
+
+namespace Duende.IdentityServer.SqlServer;
+
+public class SeedData
+{
+    public static void EnsureSeedData(WebApplication app)
+    {
+        using var scope = app.Services.GetRequiredService<IServiceScopeFactory>().CreateScope();
+        scope.ServiceProvider.GetService<ApplicationDbContext>().Database.Migrate();
+        scope.ServiceProvider.GetService<PersistedGrantDbContext>().Database.Migrate();
+
+        var context = scope.ServiceProvider.GetService<ConfigurationDbContext>();
+        context.Database.Migrate();
+        EnsureSeedData(context);
+        EnsureUsers(scope);
+    }
+
+    private static void EnsureSeedData(ConfigurationDbContext context)
+    {
+        if (!context.Clients.Any())
+        {
+            Log.Debug("Clients being populated");
+            foreach (var client in Config.Clients.ToList())
+            {
+                context.Clients.Add(client.ToEntity());
+            }
+            context.SaveChanges();
+        }
+        else
+        {
+            Log.Debug("Clients already populated");
+        }
+
+        if (!context.IdentityResources.Any())
+        {
+            Log.Debug("IdentityResources being populated");
+            foreach (var resource in Config.IdentityResources.ToList())
+            {
+                context.IdentityResources.Add(resource.ToEntity());
+            }
+            context.SaveChanges();
+        }
+        else
+        {
+            Log.Debug("IdentityResources already populated");
+        }
+
+        if (!context.ApiScopes.Any())
+        {
+            Log.Debug("ApiScopes being populated");
+            foreach (var resource in Config.ApiScopes.ToList())
+            {
+                context.ApiScopes.Add(resource.ToEntity());
+            }
+            context.SaveChanges();
+        }
+        else
+        {
+            Log.Debug("ApiScopes already populated");
+        }
+
+        if (!context.ApiResources.Any())
+        {
+            Log.Debug("ApiResources being populated");
+            foreach (var resource in Config.ApiResources.ToList())
+            {
+                context.ApiResources.Add(resource.ToEntity());
+            }
+            context.SaveChanges();
+        }
+        else
+        {
+            Log.Debug("ApiResources already populated");
+        }
+
+        if (!context.IdentityProviders.Any())
+        {
+            Log.Debug("OIDC IdentityProviders being populated");
+            context.IdentityProviders.Add(new OidcProvider
+            {
+                Scheme = "demoidsrv",
+                DisplayName = "IdentityServer",
+                Authority = "https://demo.duendesoftware.com",
+                ClientId = "login",
+            }.ToEntity());
+            context.SaveChanges();
+        }
+        else
+        {
+            Log.Debug("OIDC IdentityProviders already populated");
+        }
+    }
+
+    private static void EnsureUsers(IServiceScope scope)
+    {
+        var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var alice = userMgr.FindByNameAsync("alice").Result;
+        if (alice == null)
+        {
+            alice = new ApplicationUser
+            {
+                UserName = "alice",
+                Email = "AliceSmith@email.com",
+                EmailConfirmed = true,
+            };
+            var result = userMgr.CreateAsync(alice, "Pass123$").Result;
+            if (!result.Succeeded)
+            {
+                throw new Exception(result.Errors.First().Description);
+            }
+
+            result = userMgr.AddClaimsAsync(alice, new Claim[]{
+                            new Claim(JwtClaimTypes.Name, "Alice Smith"),
+                            new Claim(JwtClaimTypes.GivenName, "Alice"),
+                            new Claim(JwtClaimTypes.FamilyName, "Smith"),
+                            new Claim(JwtClaimTypes.WebSite, "http://alice.com"),
+                        }).Result;
+            if (!result.Succeeded)
+            {
+                throw new Exception(result.Errors.First().Description);
+            }
+            Log.Debug("alice created");
+        }
+        else
+        {
+            Log.Debug("alice already exists");
+        }
+
+        var bob = userMgr.FindByNameAsync("bob").Result;
+        if (bob == null)
+        {
+            bob = new ApplicationUser
+            {
+                UserName = "bob",
+                Email = "BobSmith@email.com",
+                EmailConfirmed = true
+            };
+            var result = userMgr.CreateAsync(bob, "Pass123$").Result;
+            if (!result.Succeeded)
+            {
+                throw new Exception(result.Errors.First().Description);
+            }
+
+            result = userMgr.AddClaimsAsync(bob, new Claim[]{
+                            new Claim(JwtClaimTypes.Name, "Bob Smith"),
+                            new Claim(JwtClaimTypes.GivenName, "Bob"),
+                            new Claim(JwtClaimTypes.FamilyName, "Smith"),
+                            new Claim(JwtClaimTypes.WebSite, "http://bob.com"),
+                            new Claim("location", "somewhere")
+                        }).Result;
+            if (!result.Succeeded)
+            {
+                throw new Exception(result.Errors.First().Description);
+            }
+            Log.Debug("bob created");
+        }
+        else
+        {
+            Log.Debug("bob already exists");
+        }
+    }
+}
+```
+
+Now seed the database by right-clicking on the `Duende.IdentityServer.Sqlite` project and selecting Properties.
+Select Debug on the left menu and under General, select Open debug launch profiles UI link.
+Enter /seed for the Command line arguments.
+
+Once the database is seeded, make sure to remove the command line argument.
+
+## Demo 1
+
+let's see if we can get an access token.
+
+run `Duende.IdentityServer.SqlServer`.
+
+execute the following command in a shell using curl to get an access token
+
+```shell
+curl -X POST -H "content-type: application/x-www-form-urlencoded" -H "Cache-Control: no-cache" -d "client_id=m2m.client&scope=weatherApiScope&client_secret=511536EF-F270-4058-80CA-1C89C192F69A&grant_type=client_credentials" "https://localhost:5001/connect/token"
+```
+
+or use Postman to get access token
+
+![Postman get access token](img/postman-get-access-token.png)
