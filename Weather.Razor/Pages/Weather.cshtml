@@ -1,0 +1,22 @@
+﻿@page
+@model Weather.Razor.Pages.WeatherModel
+@{
+    ViewData["Title"] = "Weather Page";
+}
+
+<h2>Weather</h2>
+
+@if (Model.WeatherData != null)
+{
+    <table>
+        @foreach (var item in Model.WeatherData)
+        {
+            <tr>
+                <td>@item.Date</td>
+                <td>@item.Summary</td>
+                <td>@item.TemperatureC</td>
+                <td>@item.TemperatureF</td>
+            </tr>
+        }
+    </table>
+}

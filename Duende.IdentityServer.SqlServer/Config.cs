@@ -14,7 +14,7 @@ public static class Config
     public static IEnumerable<ApiScope> ApiScopes =>
         new ApiScope[]
         {
-            new("weatherApiScope"),
+            new("weatherApiScope", "Weather API Scope"),
         };
 
     public static IEnumerable<Client> Clients =>
@@ -38,9 +38,9 @@ public static class Config
 
                 AllowedGrantTypes = GrantTypes.Code,
 
-                RedirectUris = { "https://localhost:44300/signin-oidc" },
-                FrontChannelLogoutUri = "https://localhost:44300/signout-oidc",
-                PostLogoutRedirectUris = { "https://localhost:44300/signout-callback-oidc" },
+                RedirectUris = { "https://localhost:7157/signin-oidc" },
+                FrontChannelLogoutUri = "https://localhost:7157/signout-oidc",
+                PostLogoutRedirectUris = { "https://localhost:7157/signout-callback-oidc" },
 
                 AllowOfflineAccess = true,
                 AllowedScopes = { IdentityServerConstants.StandardScopes.OpenId, IdentityServerConstants.StandardScopes.Profile, "weatherApiScope" }
