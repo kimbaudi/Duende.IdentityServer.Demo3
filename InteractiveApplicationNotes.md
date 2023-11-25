@@ -1,4 +1,4 @@
-# Protecting an API using Client Credentials
+# Interactive Applications with ASP.NET Core
 
 Config.cs (IdentityServer)
 
@@ -9,6 +9,13 @@ namespace Duende.IdentityServer.InMemory;
 
 public static class Config
 {
+    public static IEnumerable<IdentityResource> IdentityResources =>
+        new IdentityResource[]
+        {
+            new IdentityResources.OpenId(),
+            new IdentityResources.Profile(),
+        };
+
     public static IEnumerable<ApiScope> ApiScopes =>
         new ApiScope[]
         {
@@ -26,6 +33,19 @@ public static class Config
                 AllowedGrantTypes = GrantTypes.ClientCredentials,
 
                 AllowedScopes = { "weatherApiScope" }
+            },
+
+            // interactive client using code flow + pkce
+            new() {
+                ClientId = "interactive",
+                ClientSecrets = { new Secret("49C1A7E1-0C79-4A89-A3D6-A37998FB86B0".Sha256()) },
+
+                AllowedGrantTypes = GrantTypes.Code,
+
+                RedirectUris = { "https://localhost:7267/signin-oidc" },
+                PostLogoutRedirectUris = { "https://localhost:7267/signout-callback-oidc" },
+
+                AllowedScopes = { IdentityServerConstants.StandardScopes.OpenId, IdentityServerConstants.StandardScopes.Profile }
             },
         };
 }
@@ -105,4 +125,76 @@ public class WeatherForecastController : ControllerBase
 {
     // ...
 }
+```
+
+In Weather.MVC, install `Microsoft.AspNetCore.Authentication.OpenIdConnect` nuget package
+
+```shell
+Install-Package Microsoft.AspNetCore.Authentication.OpenIdConnect -Version 6.0.25
+# Uninstall-Package Microsoft.AspNetCore.Authentication.OpenIdConnect
+```
+
+appsettings.json (Weather.MVC)
+
+```json
+{
+  "InteractiveServiceSettings": {
+    "AuthorityUrl": "https://localhost:5001",
+    "ClientId": "interactive",
+    "ClientSecret": "49C1A7E1-0C79-4A89-A3D6-A37998FB86B0"
+  }
+}
+```
+
+Program.cs (Weather.MVC)
+
+```cs
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using System.IdentityModel.Tokens.Jwt;
+
+JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddHttpClient();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+})
+.AddCookie(CookieAuthenticationDefaults.AuthenticationScheme)
+.AddOpenIdConnect(OpenIdConnectDefaults.AuthenticationScheme, options =>
+{
+    options.Authority = builder.Configuration["InteractiveServiceSettings:AuthorityUrl"];
+
+    options.ClientId = builder.Configuration["InteractiveServiceSettings:ClientId"];
+    options.ClientSecret = builder.Configuration["InteractiveServiceSettings:ClientSecret"];
+    options.ResponseType = "code";
+
+    options.SaveTokens = true;
+});
+
+builder.Services.AddControllersWithViews();
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapDefaultControllerRoute().RequireAuthorization();
+
+app.Run();
 ```
