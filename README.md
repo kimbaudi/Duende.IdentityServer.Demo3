@@ -609,7 +609,7 @@ Open `Weather.cshtml` and add the following:
 
 ```cs
 @page
-@model Weather.Razor.Pages.WeatherModel
+@model WeatherModel
 @{
     ViewData["Title"] = "Weather Page";
 }

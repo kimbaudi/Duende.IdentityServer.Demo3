@@ -1,0 +1,17 @@
+﻿<ul class="navbar-nav">
+    @if (User.Identity != null && User.Identity.IsAuthenticated)
+    {
+        <li class="nav-item">
+            <a class="nav-link text-dark" asp-area="" asp-page="/Signout">Signout</a>
+        </li>
+    }
+    else
+    {
+        <li class="nav-item">
+            <form method="post" asp-area="" asp-page="/Login">
+                <input type="hidden" name="returlUrl" value="@(Context.Request.Path+Context.Request.QueryString)" />
+                <input type="submit" class="btn nav-link text-dark shadow-none" value="Login" />
+            </form>
+        </li>
+    }
+</ul>

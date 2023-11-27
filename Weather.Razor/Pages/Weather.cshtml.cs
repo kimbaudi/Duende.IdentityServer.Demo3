@@ -6,39 +6,38 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using System.Text.Json;
 using Weather.Razor.Models;
 
-namespace Weather.Razor.Pages
-{
-    [Authorize]
-    public class WeatherModel : PageModel
-    {
-        private readonly IHttpClientFactory _httpClientFactory;
-        private readonly ILogger<WeatherModel> _logger;
+namespace Weather.Razor.Pages;
 
-        public WeatherModel(IHttpClientFactory httpClientFactory, ILogger<WeatherModel> logger)
+[Authorize]
+public class WeatherModel : PageModel
+{
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ILogger<WeatherModel> _logger;
+
+    public WeatherModel(IHttpClientFactory httpClientFactory, ILogger<WeatherModel> logger)
+    {
+        _httpClientFactory = httpClientFactory;
+        _logger = logger;
+    }
+
+    [BindProperty]
+    public IEnumerable<WeatherData>? WeatherData { get; set; }
+
+    public async Task OnGetAsync()
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+
+        var token = await HttpContext.GetTokenAsync("access_token");
+        if (token != null)
         {
-            _httpClientFactory = httpClientFactory;
-            _logger = logger;
+            httpClient.SetBearerToken(token);
         }
 
-        [BindProperty]
-        public IEnumerable<WeatherData>? WeatherData { get; set; }
-
-        public async Task OnGetAsync()
+        var httpResponseMessage = await httpClient.GetAsync("https://localhost:7232/weatherforecast");
+        if (httpResponseMessage.IsSuccessStatusCode)
         {
-            var httpClient = _httpClientFactory.CreateClient();
-
-            var token = await HttpContext.GetTokenAsync("access_token");
-            if (token != null)
-            {
-                httpClient.SetBearerToken(token);
-            }
-
-            var httpResponseMessage = await httpClient.GetAsync("https://localhost:7232/weatherforecast");
-            if (httpResponseMessage.IsSuccessStatusCode)
-            {
-                using var contentStream = await httpResponseMessage.Content.ReadAsStreamAsync();
-                WeatherData = await JsonSerializer.DeserializeAsync<IEnumerable<WeatherData>>(contentStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            }
+            using var contentStream = await httpResponseMessage.Content.ReadAsStreamAsync();
+            WeatherData = await JsonSerializer.DeserializeAsync<IEnumerable<WeatherData>>(contentStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         }
     }
 }

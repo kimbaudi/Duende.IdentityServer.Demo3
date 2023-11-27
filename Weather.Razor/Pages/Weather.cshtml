@@ -1,10 +1,10 @@
 ﻿@page
-@model Weather.Razor.Pages.WeatherModel
+@model WeatherModel
 @{
-    ViewData["Title"] = "Weather Page";
+    ViewData["Title"] = "Weather";
 }
 
-<h2>Weather</h2>
+<h2>@ViewData["Title"]</h2>
 
 @if (Model.WeatherData != null)
 {

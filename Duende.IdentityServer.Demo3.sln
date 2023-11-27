@@ -5,9 +5,9 @@ VisualStudioVersion = 17.8.34316.72
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Duende.IdentityServer.SqlServer", "Duende.IdentityServer.SqlServer\Duende.IdentityServer.SqlServer.csproj", "{AEB6E8A0-CDE3-4A1F-9F43-13345291A5F0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Weather.API", "Weather.API\Weather.API.csproj", "{A1AA4138-8832-4DDA-86C4-C680205B6625}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Weather.API", "Weather.API\Weather.API.csproj", "{A1AA4138-8832-4DDA-86C4-C680205B6625}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Weather.Razor", "Weather.Razor\Weather.Razor.csproj", "{70A79CAF-E486-4864-A7CA-8313F0E6C133}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Weather.Razor", "Weather.Razor\Weather.Razor.csproj", "{70A79CAF-E486-4864-A7CA-8313F0E6C133}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

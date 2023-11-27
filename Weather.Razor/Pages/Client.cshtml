@@ -1,0 +1,38 @@
+﻿@page
+@model ClientModel
+@using Microsoft.AspNetCore.Authentication
+@{
+    ViewData["Title"] = "Client";
+}
+
+@{
+    var claims = User.Claims;
+}
+@if (claims.Count() > 0)
+{
+    <h2>Claims</h2>
+
+    <dl>
+        @foreach (var claim in claims)
+        {
+            <dt>@claim.Type</dt>
+            <dd>@claim.Value</dd>
+        }
+    </dl>
+}
+
+@{
+    var authenticateResult = await HttpContext.AuthenticateAsync();
+}
+@if (authenticateResult != null && authenticateResult.Properties != null)
+{
+    <h2>Properties</h2>
+
+    <dl>
+        @foreach (var prop in authenticateResult.Properties.Items)
+        {
+            <dt>@prop.Key</dt>
+            <dd>@prop.Value</dd>
+        }
+    </dl>
+}
